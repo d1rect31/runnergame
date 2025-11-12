@@ -17,8 +17,8 @@ let birdSpawnTimer = 0;
 let cloudSpawnAccumulator = 0; 
 
 let lastTime = 0; 
-const TARGET_FPS = 60;
-const TIME_STEP = 500 / TARGET_FPS; // 16.67ms - целевое время кадра
+const TARGET_FPS = 120;
+const TIME_STEP = 1000 / TARGET_FPS;
 
 // НОВОЕ: Аудио плеер
 const BGM = new Audio('SEGA.mp3'); 
@@ -425,7 +425,7 @@ class Player {
 
             // Стандартная проверка на "приземление" (с расширенным хитбоксом)
             const PLATFORM_HITBOX_EXPAND = 20; 
-			const landingWindow = 10;
+			const landingWindow = 50;
 			
             if (this.vy > 0 &&
                 isColliding(this, platform, -PLATFORM_HITBOX_EXPAND / 2, 0, PLATFORM_HITBOX_EXPAND) && 
