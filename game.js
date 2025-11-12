@@ -425,9 +425,11 @@ class Player {
 
             // Стандартная проверка на "приземление" (с расширенным хитбоксом)
             const PLATFORM_HITBOX_EXPAND = 20; 
+			const landingWindow = 10;
+			
             if (this.vy > 0 &&
                 isColliding(this, platform, -PLATFORM_HITBOX_EXPAND / 2, 0, PLATFORM_HITBOX_EXPAND) && 
-                this.y + this.height < platform.y + this.vy + 1)
+                this.y + this.height < platform.y + landingWindow)
             {
                 this.onGround = true;
                 this.vy = 0;
