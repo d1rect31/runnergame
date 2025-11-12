@@ -1,0 +1,17 @@
+body {
+    background-color: #333;
+    color: #fff;
+    font-family: "Verdana", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+canvas {
+    background-color: #87CEEB; /* Небесно-голубой фон */
+    border: 3px solid #000;
+    display: block;
+    margin-top: 20px;
+}
