@@ -126,19 +126,22 @@ window.addEventListener('keyup', (e) => {
 
 // Слушатель кликов мыши
 canvas.addEventListener('click', (e) => {
-    if (gameState !== 'menu') return; 
+    if (gameState === 'playing' || gameState === 'paused') return; 
 
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
-    if (mouseX > startButton.x &&
-        mouseX < startButton.x + startButton.width &&
-        mouseY > startButton.y &&
-        mouseY < startButton.y + startButton.height)
-    {
-        init(); 
-    }
+	if (gameState === 'menu') {
+		if (mouseX > startButton.x &&
+			mouseX < startButton.x + startButton.width &&
+			mouseY > startButton.y &&
+			mouseY < startButton.y + startButton.height)
+		{
+			init(); 
+		}
+	} else if (gameState === 'gameOver'){
+		gameState = 'menu';
+	}
 });
 
 // --- Вспомогательная функция для рисования скругленных прямоугольников ---
