@@ -347,7 +347,7 @@ class Player {
         }
         
         // --- 2. ЛОГИКА JETPACK ---
-        else if (this.powerUps.jetpack && (keys.ArrowUp || keys.KeyW || keys.Space) && this.jetpackFuel > 0 && !this.onGround && this.isJumping) {
+        else if (this.powerUps.jetpack && (keys.ArrowUp || keys.KeyW || keys.Space) && this.jetpackFuel > 0 && !this.onGround) {
             
             this.isApplyingJetpackForce = true;
             
