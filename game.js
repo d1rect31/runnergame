@@ -346,16 +346,13 @@ class Player {
             sfx.jump.play().catch(e => console.log("Jump SFX blocked:", e));
         }
         
-        // --- ЛОГИКА JETPACK ---
+        // --- 2. ЛОГИКА JETPACK ---
         else if (this.powerUps.jetpack && (keys.ArrowUp || keys.KeyW || keys.Space) && this.jetpackFuel > 0 && !this.onGround && this.isJumping) {
             
             this.isApplyingJetpackForce = true;
             
-            // Применяем постоянную тягу, ТОЛЬКО если мы медленнее макс. скорости джетпака
             if (this.vy > this.MAX_JETPACK_SPEED) {
                 this.vy += this.jetpackForce * timeFactor; 
-                
-                // Если мы *превысили* макс. скорость (стали быстрее), возвращаем на макс. скорость
                 if (this.vy < this.MAX_JETPACK_SPEED) {
                     this.vy = this.MAX_JETPACK_SPEED;
                 }
@@ -369,76 +366,87 @@ class Player {
             this.jetpackFuel = Math.min(this.MAX_JETPACK_FUEL, this.jetpackFuel + this.FUEL_REGEN * timeFactor);
         }
 		
-		// Гравитация
-		let currentGravity = gravity;
-		if (this.powerUps.slowFall && this.vy >= 0) {
-			currentGravity *= 0.3; 
-		}
+        // НОВОЕ: Сохраняем Y-координату игрока до его перемещения
+        const oldY = this.y; 
+
+        // Гравитация (с Variable Jump)
+        let currentGravity = gravity;
+        if (this.powerUps.slowFall && this.vy >= 0) {
+            currentGravity *= 0.3; 
+        }
+        if (!this.onGround && this.vy < 0 && (keys.ArrowUp || keys.KeyW || keys.Space)) {
+            if (!this.powerUps.jetpack) {
+                currentGravity *= 0.5; 
+            }
+        }
+        this.vy += currentGravity * timeFactor;
+        this.y += this.vy * timeFactor; // <-- Y обновляется здесь
 		
-		// НОВОЕ: Variable Jump - Меньше гравитации при зажатии прыжка
-		// Применяется только если игрок НЕ НА ЗЕМЛЕ и скорость отрицательна (летит вверх)
-		if (!this.onGround && this.vy < 0 && (keys.ArrowUp || keys.KeyW || keys.Space)) {
-			// Применяем замедление только если НЕ АКТИВЕН ДЖЕТПАК
-			if (!this.powerUps.jetpack) {
-				currentGravity *= 0.6; // Уменьшаем гравитацию на фазе подъема
-			}
-		}
-		this.vy += currentGravity * timeFactor;
-		this.y += this.vy * timeFactor;
-		
-		// --- НОВАЯ ЛОГИКА: ОГРАНИЧЕНИЕ ПОТОЛКА ---
+		// --- ОГРАНИЧЕНИЕ ПОТОЛКА ---
         const CEILING_HEIGHT = -20; 
         if (this.y < CEILING_HEIGHT) {
             this.y = CEILING_HEIGHT; 
             this.vy = Math.max(0, this.vy); 
         }
 		
-        // Столкновения с платформами
+        // --- Столкновения с платформами ---
         this.onGround = false;
         this.currentPlatform = null;
+        
         platforms.forEach(platform => {
             
+            // 1. Проверка на спуск (S-Key)
             if ((keys.ArrowDown || keys.KeyS) && platform.height < 40) {
-                return; 
+                return; // Пропускаем эту платформу
             }
             
-            // НОВОЕ: Логика Step-Up
-            // Проверяем, на земле ли мы и движемся ли в стену
+            const PLATFORM_HITBOX_EXPAND = 20; // Широкий хитбокс
+            
+            // 2. Проверка Step-Up
             if (this.vy >= 0 && (keys.ArrowRight || keys.KeyD)) {
-                // Координаты проверки "ступеньки" (впереди и у ног)
                 const stepCheckX = this.x + this.width;
                 const stepCheckY_Bottom = this.y + this.height - 1;
                 
-                // Если мы касаемся платформы сбоку
                 if (platform.x < stepCheckX && platform.x + platform.width > this.x &&
                     platform.y < stepCheckY_Bottom && platform.y + platform.height > this.y)
                 {
                     const stepHeight = (this.y + this.height) - platform.y;
-                    // Если стена - это ступенька (ниже step_size) и мы на нее "наступаем"
                     if (stepHeight > 0 && stepHeight <= this.step_size) {
                         this.onGround = true;
                         this.vy = 0;
-                        this.y = platform.y - this.height; // "Телепорт" наверх
+                        this.y = platform.y - this.height; 
                         this.currentPlatform = platform;
-						this.isJumping = false;
-                        return; // Выходим из проверки этой платформы
+                        this.isJumping = false; 
+                        return; // Выходим, мы нашли землю
                     }
                 }
             }
 
-            // Стандартная проверка на "приземление" (с расширенным хитбоксом)
-            const PLATFORM_HITBOX_EXPAND = 20; 
-			const landingWindow = 20;
-			
-            if (this.vy > 0 &&
-                isColliding(this, platform, -PLATFORM_HITBOX_EXPAND / 2, 0, PLATFORM_HITBOX_EXPAND) && 
-                this.y + this.height < platform.y + landingWindow)
-            {
-                this.onGround = true;
-                this.vy = 0;
-                this.y = platform.y - this.height;
-                this.currentPlatform = platform;
-				this.isJumping = false;
+            // 3. НОВАЯ НАДЕЖНАЯ ПРОВЕРКА ПРИЗЕМЛЕНИЯ (Raycasting)
+            const playerLeft = this.x - (PLATFORM_HITBOX_EXPAND / 2);
+            const playerRight = this.x + this.width + (PLATFORM_HITBOX_EXPAND / 2);
+            const isHorizontallyAligned = (playerRight > platform.x && playerLeft < platform.x + platform.width);
+
+            if (this.vy > 0 && isHorizontallyAligned) {
+                
+                const bottomY_current = this.y + this.height;
+                const bottomY_previous = oldY + this.height; 
+                const platformTop = platform.y;
+                
+                // Условие 1: Raycast (Мы пересекли верхнюю грань -> защита от провала)
+                const didTunnel = (bottomY_previous <= platformTop && bottomY_current >= platformTop);
+                // Условие 2: Landing Window (Мы приземлились "близко" -> "липкие" ноги)
+                const landingWindow = 15; 
+                const didLandNear = (bottomY_current >= platformTop && bottomY_current <= platformTop + landingWindow);
+
+                if (didTunnel || didLandNear) {
+                    this.onGround = true;
+                    this.vy = 0;
+                    this.y = platform.y - this.height;
+                    this.currentPlatform = platform;
+                    this.isJumping = false; 
+                    return;
+                }
             }
         });
 
