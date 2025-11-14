@@ -964,7 +964,8 @@ function drawMenu() {
     
     ctx.fillStyle = 'black';
     ctx.font = '20px "Verdana", sans-serif';
-    ctx.fillText('Press Enter to start', canvas.width / 2, startButton.y + 80);
+    ctx.fillText('Controls: WASD or Arrow Keys', canvas.width / 2, startButton.y + 80);
+    ctx.fillText('Press Enter to start', canvas.width / 2, startButton.y + 120);
 }
 
 function triggerGameOver() {
